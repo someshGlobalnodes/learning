@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Dropdown from "./Dropdown";
 
-const DataTable = ({ columns, data }) => {
+const DataTable = ({ columns, data , setData }) => {
   const [filterText, setFilterText] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: "asc" });
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,11 +52,9 @@ const DataTable = ({ columns, data }) => {
     startIndex + TOTAL_VALUES_PER_PAGE
   );
 
-  console.log(paginatedData)
 
   const totalPages = Math.ceil(sortedData.length / TOTAL_VALUES_PER_PAGE);
 
-  console.log(totalPages, "tst");
 
   const goOnPrevPage = () => {
     if (currentPage > 1) {
@@ -69,36 +68,70 @@ const DataTable = ({ columns, data }) => {
     }
   };
 
+   
+
   const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      const allIds = data.map(row => row.id);
-      console.log(allIds)
-      setSelectedRows(new Set(allIds));
-    } else {
-      setSelectedRows(new Set());
-    }
+    const newData = data.map(row => ({ ...row, isChecked: e.target.checked }));
+    setData(newData);
+    const newSelectedRows = e.target.checked ? new Set(newData.map(row => row.id)) : new Set();
+    setSelectedRows(newSelectedRows);
   };
 
+ 
+
   const handleSelectRow = (id) => {
-    const newSelectedRows = new Set(selectedRows);
-    if (newSelectedRows.has(id)) {
-      newSelectedRows.delete(id);
-    } else {
-      newSelectedRows.add(id);
-    }
+    console.log(id)
+    const newData = data?.map(row => 
+      row.id === id ? { ...row, isChecked: !row.isChecked } : row
+    );
+    setData(newData);
+    const newSelectedRows = new Set(newData.filter(row => row.isChecked).map(row => row.id));
     setSelectedRows(newSelectedRows);
-   console.log(id)
+  };
+
+
+  // Dropdown
+
+  const handleDropdown = (action) => {
+    if (action === 'delete') {
+
+      const updatedData = data
+      .filter(row => !selectedRows.has(row.id))
+      .map(row => ({ ...row, isChecked: false }));
+      setData(updatedData);
+      setSelectedRows(new Set());
+      
+    } else if (action === 'mark-active') {
+      const updatedData = data.map(row => 
+        selectedRows.has(row.id) ? { ...row, isChecked: false , status : 'Active' } : row
+      );
+      setData(updatedData);
+      setSelectedRows(new Set());
+    } else if (action === 'mark-inactive') {
+      const updatedData = data.map(row => 
+        selectedRows.has(row.id) ? { ...row, isChecked: false , status : 'InActive' } : row
+      );
+      setData(updatedData);
+      setSelectedRows(new Set());
+    }
   }
 
   return (
     <div className="flex justify-center flex-col">
-      <input
-        type="text"
-        placeholder="Search"
-        value={filterText}
-        onChange={handleFilterChange}
-        className="w-60 mt-6 ml-32 mb-6 p-2 rounded-lg border-[#555454] border-[2px] "
-      />
+
+      <div className="flex gap-6 items-center ml-28">
+      <Dropdown  handleSelectDropdown={handleDropdown}/>
+
+<input
+  type="text"
+  placeholder="Search"
+  value={filterText}
+  onChange={handleFilterChange}
+  className="w-60 mt-6  mb-6 p-2 rounded-lg border-[#555454] border-[2px] "
+/>
+      </div>
+
+   
 
       <table className="mt-4  mx-auto w-[80%] border-collapse">
         <thead className="border-[#555454] border-[2px]  text-center p-2 ">
@@ -107,7 +140,7 @@ const DataTable = ({ columns, data }) => {
               <input
                 type="checkbox"
                  onChange={handleSelectAll}
-                    checked={paginatedData.length > 0 && paginatedData.every(row => selectedRows.has(row.id))}
+                 checked={paginatedData.length > 0 && paginatedData.every(row => row.isChecked)}
               />
             </th>
             {columns &&
@@ -136,7 +169,7 @@ const DataTable = ({ columns, data }) => {
                 <td className="border-[#555454] border-[2px]">
                   <input
                     type="checkbox"
-                     checked={selectedRows.has(row.id)}
+                    checked={row.isChecked}
                     onChange={() => handleSelectRow(row.id)}
                   />
                 </td>
