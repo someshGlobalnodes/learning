@@ -1,10 +1,5 @@
-"use client";
-
-import React, { useState } from "react";
-
 const DataTable = ({
   columns,
-  handleSelectRow,
   data,
   setData,
   handleSort,
@@ -13,6 +8,8 @@ const DataTable = ({
   setSelectedRows,
   currentPage,
   setCurrentPage,
+  handleEditRow ,
+  selectedRows
 }) => {
   const TOTAL_VALUES_PER_PAGE = 5;
 
@@ -21,6 +18,8 @@ const DataTable = ({
     startIndex,
     startIndex + TOTAL_VALUES_PER_PAGE
   );
+
+  console.log(selectedRows)
 
   const totalPages = Math.ceil(sortedData.length / TOTAL_VALUES_PER_PAGE);
 
@@ -37,9 +36,10 @@ const DataTable = ({
   };
 
   const handleSelectAll = (isChecked) => {
-    const newSelectedRows = isChecked
-      ? new Set(paginatedData.map((row) => row.id))
-      : new Set();
+    const allSelected = paginatedData.every((row) => row.isChecked);
+    const newSelectedRows = allSelected
+      ? new Set()
+      : new Set(paginatedData.map((row) => row.id));
     setSelectedRows(newSelectedRows);
 
     const updatedData = data.map((row) => ({
@@ -49,10 +49,22 @@ const DataTable = ({
     setData(updatedData);
   };
 
+  const handleSelectRow = (id) => {
+    const newData = data.map(row =>
+      row.id === id ? { ...row, isChecked: !row.isChecked } : row
+    );
+
+    setData(newData);
+    const newSelectedRows = new Set(newData.filter(row => row.isChecked).map(row => row.id));
+    console.log(newSelectedRows)
+    setSelectedRows(newSelectedRows);
+  };
+  
+
   return (
     <div className="flex justify-center flex-col">
-      <table className="mt-4  mx-auto w-[80%] border-collapse">
-        <thead className="border-[#555454] border-[2px]  text-center p-2 ">
+      <table className="mt-4 mx-auto w-[80%] border-collapse">
+        <thead className="border-[#555454] border-[2px] text-center p-2">
           <tr>
             <th className="border-[#555454] border-[2px]">
               <input
@@ -64,38 +76,46 @@ const DataTable = ({
                 }
               />
             </th>
-            {columns &&
-              columns?.map((item) => (
-                <th
-                  key={item.id}
-                  className="bottom-1 text-[#333232] cursor-pointer p-2 border-[#555454] border-[2px] "
-                  onClick={() => handleSort(item.id)}
-                >
-                  {item?.label}
-                  {sortConfig.key === item.id
-                    ? sortConfig.direction === "asc"
-                      ? " ▲"
-                      : " ▼"
-                    : null}
-                </th>
-              ))}
+            {columns?.map((item) => (
+              <th
+                key={item.id}
+                className="bottom-1 text-[#333232] cursor-pointer p-2 border-[#555454] border-[2px]"
+                onClick={() => handleSort(item.id)}
+              >
+                {item.label}
+                {sortConfig.key === item.id
+                  ? sortConfig.direction === "asc"
+                    ? " ▲"
+                    : " ▼"
+                  : null}
+              </th>
+            ))}
           </tr>
         </thead>
 
-        <tbody className="border-[#555454] border-[2px]  text-center p-2 ">
-          {paginatedData?.length > 0 ? (
-            paginatedData?.map((row, index) => (
+        <tbody className="border-[#555454] border-[2px] text-center p-2">
+          {paginatedData.length > 0 ? (
+            paginatedData.map((row, index) => (
               <tr key={index}>
                 <td className="border-[#555454] border-[2px]">
                   <input
                     type="checkbox"
-                    checked={row.isChecked}
+                    checked={selectedRows.has(row.id)}
                     onChange={() => handleSelectRow(row.id)}
                   />
                 </td>
-                {columns?.map((col) => (
-                  <td className="border-[#555454] border-[2px] ">
-                    {row[col.id] ?? ""}
+                {columns.map((col) => (
+                  <td className="border-[#555454] border-[2px]" key={col.id}>
+                    {col.id === "edit" ? (
+                      <button
+                        className="  px-2 py-1 "
+                        onClick={() => handleEditRow(row)}
+                      >
+                        Edit
+                      </button>
+                    ) : (
+                      row[col.id] ?? ""
+                    )}
                   </td>
                 ))}
               </tr>

@@ -17,7 +17,8 @@ export default function Home() {
     { id: 'city', label: 'City' },
     { id: 'address', label: 'Address' },
     { id: 'phone_number', label: 'Number' },
-    { id: 'status', label: 'Status' }
+    { id: 'status', label: 'Status' },
+    {id : 'edit' , label:'Edit'}
   ];
 
   const [data, setData] = useState([]);
@@ -27,7 +28,7 @@ export default function Home() {
   const [modal , setModal] = useState(false)
   const [loading , setLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1);
-
+  const [editData, setEditData] = useState(null);
 
 
   const getUserData = async () => {
@@ -40,8 +41,13 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    getUserData();
+  }, []);
+
  
   const addNewUser = async (data) => {
+    console.log(data)
     try{
       setLoading(true)
       const response = await fetch('http://localhost:3000/api/user', {
@@ -66,18 +72,68 @@ export default function Home() {
   }
 
 
+  const updateUser = async (data, editData) => {
+    const id = editData?.id;
+    const { name, age, city, address, phone_number, status } = data;
+  
+    try {
+      const response = await fetch(`http://localhost:3000/api/user/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, age, city, address, phone_number, status }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Update failed: ${errorData.error || 'Unknown error'}`);
+      }
+
+      if(response?.ok){
+        toast.success('User added successfully!')
+        getUserData()
+        setModal(false);
+        selectedRows.clear()
+       }
+  
+      const responseData = await response.json();
+      console.log('Update successful:', responseData);
+    } catch (error) {
+      console.error('Failed to update user:', error);
+    }
+  };
+  
+
 
   const handleSubmit = (formData) => {
-    addNewUser(formData)
+    if (editData) {
+      updateUser(formData , editData)
+      setEditData(null);
+    } else {
+      addNewUser(formData);
+    }
   }
 
   const deleteRows = async (id) => {
     console.log(id)
+    const ids = id.map(Number);
+    console.log(ids)
     try {
-      const response = await fetch(`http://localhost:3000/api/user/${id}`, {
+      const response = await fetch(`http://localhost:3000/api/user/`, {
       method: 'DELETE',
+      body: JSON.stringify({ id: ids })
     });
       console.log(response , 'res')
+      if (response.ok) {
+        const result = await response.json();
+        toast.success('User deleted successfully!');
+        getUserData();
+    } else {
+        const errorData = await response.json();
+        console.error('Failed to delete:', errorData.error);
+        toast.error(`Error: ${errorData.error}`);
+    }
     } catch (error) {
       console.error('Failed to delete rows:', error);
     }
@@ -88,11 +144,14 @@ export default function Home() {
   const handleDropdown = (action) => {
     if (action === 'delete') {
       const idsArray = Array.from(selectedRows);
+      console.log(idsArray)
     if (idsArray.length === 1) {
       deleteRows(idsArray[0]); 
+    }else {
+      deleteRows(idsArray)
     }
     } else if (action === 'mark-active') {
-      const updatedData = data.map(row =>
+      const updatedData = data?.map(row =>
         selectedRows.has(row.id) ? { ...row, isChecked: false, status: 'Active' } : row
       );
       setData(updatedData);
@@ -108,15 +167,6 @@ export default function Home() {
 
 
 
-  const handleSelectRow = (id) => {
-    const newData = data.map(row =>
-      row.id === id ? { ...row, isChecked: !row.isChecked } : row
-    );
-
-    setData(newData);
-    const newSelectedRows = new Set(newData.filter(row => row.isChecked).map(row => row.id));
-    setSelectedRows(newSelectedRows);
-  };
   
 
   const handleFilterChange = (e) => {
@@ -136,32 +186,38 @@ export default function Home() {
     if (sortConfig.key) {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
-      if (aValue < bValue) {
-        return sortConfig.direction === "asc" ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortConfig.direction === "asc" ? 1 : -1;
+  
+      // Ensure comparison of the same type
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        // Case-insensitive string comparison
+        return sortConfig.direction === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
       }
     }
     return 0;
   });
-
+  
   const handleSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
+    // Toggle sorting direction
+    const direction = (sortConfig.key === key && sortConfig.direction === 'asc') ? 'desc' : 'asc';
     setSortConfig({ key, direction });
   };
+  
 
   const handleModalOpen = () => {
     setModal((prev) => !prev);
+    setEditData(null);
   }
 
-
-  useEffect(() => {
-    getUserData();
-  }, []);
+  const handleEditRow = (row) => {
+    console.log(row)
+    setEditData(row); // Set the row data for editing
+    setModal(true); // Open the modal
+  };
+ 
 
   return (
     <div>
@@ -177,7 +233,6 @@ export default function Home() {
         columns={columns}
          data={data}
         setData={setData} 
-        handleSelectRow={handleSelectRow}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
         sortedData={sortedData}
@@ -185,9 +240,10 @@ export default function Home() {
         sortConfig={sortConfig}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
+        handleEditRow={handleEditRow}
       />
       {
-        modal &&   <AddModalComponent isOpen={modal} onClose={handleModalOpen} loading={loading}  onSubmit={handleSubmit}/>
+        modal &&   <AddModalComponent isOpen={modal} onClose={handleModalOpen} loading={loading}  onSubmit={handleSubmit} editData={editData}/>
       }
      
     </div>

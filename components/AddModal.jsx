@@ -17,22 +17,21 @@ const schema = Yup.object().shape({
     .required('Age is required')
     .min(0, 'Age must be a positive number'),
   city: Yup.string().required('City is required'),
-  address: Yup.string().required('Address is required'),
   phone_number: Yup.string()
     .required('Phone number is required'),
   status: Yup.string().required('Status is required')
 });
 
-const AddModalComponent = ({ isOpen, onClose, onSubmit, loading }) => {
+const AddModalComponent = ({ isOpen, onClose, onSubmit, loading , editData }) => {
   const { control, handleSubmit, reset } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
-      name: '',
-      age: '',
-      city: '',
-      address: '',
-      phone_number: '',
-      status: '' 
+      name: editData ?  editData?.name :'',
+      age:  editData ?  editData?.age :'',
+      city:  editData ?  editData?.city :'',
+      address:  editData ? editData?.address : '',
+      phone_number:  editData ?  editData?.phone_number :'',
+      status:  editData ?  editData?.status :'' 
     }
   });
 
@@ -40,6 +39,8 @@ const AddModalComponent = ({ isOpen, onClose, onSubmit, loading }) => {
     reset(); 
     onClose();
   };
+
+
 
   return (
     <>
@@ -53,7 +54,7 @@ const AddModalComponent = ({ isOpen, onClose, onSubmit, loading }) => {
             >
               &times;
             </button>
-            <h2 className="text-xl font-semibold mb-4">Add New User</h2>
+            <h2 className="text-xl font-semibold mb-4">{editData ? "Update User" : 'Add User'}</h2>
             <form onSubmit={handleSubmit(onSubmit)}>
               <InputField control={control} label="Name" type="text" name="name" placeholder="Enter Name" />
               <InputField control={control} label="Age" type="number" name="age" placeholder="Enter Age" />
